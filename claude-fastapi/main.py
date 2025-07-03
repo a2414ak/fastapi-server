@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
+import logging
 
 app = FastAPI()
 
@@ -16,6 +17,9 @@ app.add_middleware(
 async def call_claude(request: Request):
     body = await request.json()
     message = body.get("message")
+
+    # ログ出力
+    logging.info(f"📨 Claudeに送るメッセージ: {message}")
 
     headers = {
         "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
@@ -35,4 +39,12 @@ async def call_claude(request: Request):
             headers=headers,
             json=payload
         )
-        return response.json()
+
+        #API呼び出し結果のログ
+        logging.info(f"📩 Claude応答ステータス: {response.status_code}")
+        
+        result = await response.json()
+        logging.info(f"📦 Claude応答内容: {result}")
+        
+        return result
+    
