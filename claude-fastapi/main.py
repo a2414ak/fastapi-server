@@ -47,10 +47,14 @@ async def call_claude(request: Request):
     }
 
     body = {
-        "model": "claude-3-opus-20240229",
+        "model": "claude-3-haiku-20240307",
         "messages": messages,
         "max_tokens": 1000
     }
+
+    # Claude呼び出し前にログを出す
+    logging.info(f"🔍 Claudeリクエスト: {body}")
+    logging.info(f"🔍 ヘッダー: {headers}")
 
     try:
         async with httpx.AsyncClient() as client:
