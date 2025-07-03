@@ -18,7 +18,7 @@ async def call_claude(request: Request):
     data = await request.json()
     user_message = data.get("message")
 
-    # 条件分岐
+    # プロンプト作成（テスト or ダジャレ）
     if user_message.strip() == "テスト":
         prompt = "「test ok」とだけ返してください。"
     else:
@@ -30,6 +30,7 @@ async def call_claude(request: Request):
 ※ 返答は一文で、ダジャレのみ返してください。
 """
 
+    # APIリクエスト準備
     headers = {
         "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
         "content-type": "application/json",
@@ -44,12 +45,15 @@ async def call_claude(request: Request):
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
-            response.raise_for_status()  # HTTPエラーを検知
-            result = response.json()
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=body
+            )
+            response.raise_for_status()  # 4xx/5xx を例外に
+            result = await response.json()  # ✅ 非同期で取得
             logging.info(f"📦 Claude応答内容: {result}")
             return result
     except Exception as e:
         logging.error(f"🛑 Claude API呼び出しでエラー: {e}")
         return {"error": "Claude API 呼び出しに失敗しました"}
-    
