@@ -15,11 +15,20 @@ app.add_middleware(
 
 @app.post("/claude")
 async def call_claude(request: Request):
-    body = await request.json()
-    message = body.get("message")
+    data = await request.json()
+    user_message = data.get("message")
 
-    # ログ出力
-    logging.info(f"📨 Claudeに送るメッセージ: {message}")
+    # 条件分岐
+    if user_message.strip() == "テスト":
+        prompt = "「test ok」とだけ返してください。"
+    else:
+        prompt = f"""
+次の言葉を使って、面白いダジャレをひとつ作ってください：
+
+{user_message}
+
+※ 返答は一文で、ダジャレのみ返してください。
+"""
 
     headers = {
         "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
@@ -27,24 +36,20 @@ async def call_claude(request: Request):
         "anthropic-version": "2023-06-01"
     }
 
-    payload = {
+    body = {
         "model": "claude-3-opus-20240229",
-        "messages": [{"role": "user", "content": message}],
+        "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 1000
     }
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=payload
-        )
-
-        #API呼び出し結果のログ
-        logging.info(f"📩 Claude応答ステータス: {response.status_code}")
-        logging.info(f"📦 Claude応答内容: {result}")
-
-        result = response.json()
-        
-        return result
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
+            response.raise_for_status()  # HTTPエラーを検知
+            result = response.json()
+            logging.info(f"📦 Claude応答内容: {result}")
+            return result
+    except Exception as e:
+        logging.error(f"🛑 Claude API呼び出しでエラー: {e}")
+        return {"error": "Claude API 呼び出しに失敗しました"}
     
