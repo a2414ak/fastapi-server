@@ -42,9 +42,9 @@ async def call_claude(request: Request):
 
         #API呼び出し結果のログ
         logging.info(f"📩 Claude応答ステータス: {response.status_code}")
-        
-        result = await response.json()
         logging.info(f"📦 Claude応答内容: {result}")
+
+        result = response.json()
         
         return result
     
