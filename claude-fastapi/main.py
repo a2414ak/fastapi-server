@@ -37,8 +37,12 @@ class MinutesAnalysisResponse(BaseModel):
 
 async def call_claude_api(messages: list, max_tokens: int = 2000) -> Dict[str, Any]:
     """Claude APIを呼び出す共通関数"""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY環境変数が設定されていません")
+    
     headers = {
-        "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
+        "x-api-key": api_key,
         "content-type": "application/json",
         "anthropic-version": "2023-06-01"
     }
@@ -52,16 +56,29 @@ async def call_claude_api(messages: list, max_tokens: int = 2000) -> Dict[str, A
     logger.info(f"🔍 Claudeリクエスト: {body}")
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers=headers,
                 json=body
             )
+            
+            logger.info(f"📡 HTTP Status: {response.status_code}")
+            
+            if response.status_code == 404:
+                logger.error("🛑 404エラー: エンドポイントが見つかりません。APIキーまたはエンドポイントを確認してください。")
+                raise HTTPException(status_code=500, detail="Claude APIエンドポイントが見つかりません")
+            
             response.raise_for_status()
             result = response.json()
             logger.info(f"📦 Claude応答受信完了")
             return result
+    except httpx.HTTPStatusError as e:
+        logger.error(f"🛑 HTTP Status Error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=500, detail=f"Claude API HTTPエラー: {e.response.status_code}")
+    except httpx.TimeoutException:
+        logger.error("🛑 Timeout Error: Claude API呼び出しがタイムアウトしました")
+        raise HTTPException(status_code=500, detail="Claude API呼び出しがタイムアウトしました")
     except Exception as e:
         logger.error(f"🛑 Claude API呼び出しでエラー: {e}")
         raise HTTPException(status_code=500, detail=f"Claude API 呼び出しに失敗しました: {str(e)}")
@@ -264,20 +281,38 @@ async def root():
     """API情報を返す"""
     return {
         "message": "議事録分析API",
+        "version": "1.0.0",
+        "status": "running",
         "endpoints": {
             "/analyze-minutes": "詳細な議事録分析とアドバイス生成",
-            "/quick-advice": "簡易版アドバイス生成"
+            "/quick-advice": "簡易版アドバイス生成",
+            "/health": "ヘルスチェック",
+            "/docs": "API仕様書（Swagger UI）"
         }
     }
+
+@app.head("/")
+async def root_head():
+    """HEADリクエスト対応"""
+    return {}
 
 @app.get("/health")
 async def health_check():
     """ヘルスチェック"""
     api_key = os.getenv("ANTHROPIC_API_KEY")
-    return {
+    
+    health_status = {
         "status": "healthy",
-        "api_key_configured": bool(api_key)
+        "timestamp": "2025-07-03T00:00:00Z",
+        "api_key_configured": bool(api_key),
+        "api_key_length": len(api_key) if api_key else 0
     }
+    
+    if not api_key:
+        health_status["status"] = "unhealthy"
+        health_status["error"] = "ANTHROPIC_API_KEY環境変数が設定されていません"
+    
+    return health_status
 
 if __name__ == "__main__":
     import uvicorn
