@@ -18,17 +18,26 @@ async def call_claude(request: Request):
     data = await request.json()
     user_message = data.get("message")
 
-    # プロンプト作成（テスト or ダジャレ）
+    # Claude APIに渡す messages（JSON構造）
     if user_message.strip() == "テスト":
-        prompt = "「test ok」とだけ返してください。"
+        messages = [
+            {
+                "role": "user",
+                "content": "「test ok」とだけ返してください。"
+            }
+        ]
     else:
-        prompt = f"""
-次の言葉を使って、面白いダジャレをひとつ作ってください：
+        messages = [
+            {
+                "role": "user",
+                "content": f"""
+                次の言葉を使って、面白いダジャレをひとつ作ってください：
+                {user_message}
+                ※ 返答は一文で、ダジャレのみ返してください。
+                """
+            }
+        ]
 
-{user_message}
-
-※ 返答は一文で、ダジャレのみ返してください。
-"""
 
     # APIリクエスト準備
     headers = {
@@ -39,7 +48,7 @@ async def call_claude(request: Request):
 
     body = {
         "model": "claude-3-opus-20240229",
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages,
         "max_tokens": 1000
     }
 
@@ -51,7 +60,7 @@ async def call_claude(request: Request):
                 json=body
             )
             response.raise_for_status()  # 4xx/5xx を例外に
-            result = await response.json()  # ✅ 非同期で取得
+            result = response.json()
             logging.info(f"📦 Claude応答内容: {result}")
             return result
     except Exception as e:
