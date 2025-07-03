@@ -53,7 +53,8 @@ async def call_claude_api(messages: list, max_tokens: int = 2000) -> Dict[str, A
         "max_tokens": max_tokens
     }
     
-    logger.info(f"🔍 Claudeリクエスト: {body}")
+    logger.info(f"🔍 Claude APIリクエストbody: {json.dumps(body, ensure_ascii=False, indent=2)}")
+    logger.info(f"🔍 Claudeヘッダー: {headers}")
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -63,15 +64,17 @@ async def call_claude_api(messages: list, max_tokens: int = 2000) -> Dict[str, A
                 json=body
             )
             
-            logger.info(f"📡 HTTP Status: {response.status_code}")
+            logger.info(f"📡 Claude API HTTP Status: {response.status_code}")
+            logger.info(f"📡 Claude API レスポンスヘッダー: {dict(response.headers)}")
             
             if response.status_code == 404:
                 logger.error("🛑 404エラー: エンドポイントが見つかりません。APIキーまたはエンドポイントを確認してください。")
+                logger.error(f"🛑 レスポンス詳細: {response.text}")
                 raise HTTPException(status_code=500, detail="Claude APIエンドポイントが見つかりません")
             
             response.raise_for_status()
             result = response.json()
-            logger.info(f"📦 Claude応答受信完了")
+            logger.info(f"📦 Claude応答受信完了: {json.dumps(result, ensure_ascii=False, indent=2)}")
             return result
     except httpx.HTTPStatusError as e:
         logger.error(f"🛑 HTTP Status Error: {e.response.status_code} - {e.response.text}")
@@ -291,6 +294,8 @@ async def root():
         }
     }
 
+
+
 @app.head("/")
 async def root_head():
     """HEADリクエスト対応"""
@@ -313,6 +318,30 @@ async def health_check():
         health_status["error"] = "ANTHROPIC_API_KEY環境変数が設定されていません"
     
     return health_status
+
+@app.get("/test-claude")
+async def test_claude_api():
+    """Claude API接続テスト用エンドポイント"""
+    try:
+        messages = [
+            {
+                "role": "user",
+                "content": "「API接続テスト成功」とだけ返してください。"
+            }
+        ]
+        
+        result = await call_claude_api(messages, 100)
+        return {
+            "status": "success",
+            "message": "Claude API接続テスト成功",
+            "response": result
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Claude API接続テスト失敗: {str(e)}"
+        }
+
 
 if __name__ == "__main__":
     import uvicorn
