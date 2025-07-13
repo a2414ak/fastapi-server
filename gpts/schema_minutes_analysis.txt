@@ -1,0 +1,91 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Minutes Analysis API",
+    "version": "1.0.0",
+    "description": "会議議事録を分析し、要約・アクションアイテム・改善提案を生成するためのAPI"
+  },
+  "servers": [
+    {
+      "url": "https://fastapi-server-xrls.onrender.com"
+    }
+  ],
+  "paths": {
+    "/analyze-minutes": {
+      "post": {
+        "operationId": "analyzeMinutes",
+        "summary": "会議議事録を詳細に分析してアドバイスを生成する",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minutes_text": {
+                    "type": "string",
+                    "description": "会議で記録された議事録テキスト"
+                  },
+                  "meeting_type": {
+                    "type": "string",
+                    "description": "会議の種類（例：定例会議、プロジェクト会議など）",
+                    "default": "定例会議"
+                  },
+                  "participants": {
+                    "type": "string",
+                    "description": "参加者名（カンマ区切りなど）",
+                    "default": ""
+                  }
+                },
+                "required": ["minutes_text"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "議事録分析結果（要約、アクション、改善提案など）"
+          }
+        }
+      }
+    },
+    "/quick-advice": {
+      "post": {
+        "operationId": "quickAdvice",
+        "summary": "議事録から簡易的な次回会議へのアドバイスを生成する",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minutes_text": {
+                    "type": "string",
+                    "description": "会議で記録された議事録テキスト"
+                  },
+                  "meeting_type": {
+                    "type": "string",
+                    "description": "会議の種類",
+                    "default": "定例会議"
+                  },
+                  "participants": {
+                    "type": "string",
+                    "description": "参加者名（カンマ区切りなど）",
+                    "default": ""
+                  }
+                },
+                "required": ["minutes_text"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "簡易的なアドバイス内容"
+          }
+        }
+      }
+    }
+  }
+}
